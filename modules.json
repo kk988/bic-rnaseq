@@ -68,6 +68,11 @@
                         "git_sha": "735e1e04e7e01751d2d6e97055bbdb6f70683cc1",
                         "installed_by": ["modules"]
                     },
+                    "htseq/count": {
+                        "branch": "master",
+                        "git_sha": "0a7b366f6f3fead1de89698ffa68a841a102352e",
+                        "installed_by": ["modules"]
+                    },
                     "kallisto/index": {
                         "branch": "master",
                         "git_sha": "3f5420aa22e00bd030a2556dfdffc9e164ec0ec5",
