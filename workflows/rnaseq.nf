@@ -140,7 +140,7 @@ include { SORTMERNA                   } from '../modules/nf-core/sortmerna'
 include { STRINGTIE_STRINGTIE         } from '../modules/nf-core/stringtie/stringtie'
 include { SUBREAD_FEATURECOUNTS       } from '../modules/nf-core/subread/featurecounts'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions'
-include { HTSEQ_COUNT                 } from '../modules/nf-core/htseq/count/main'
+include { HTSEQ_COUNT                 } from '../modules/nf-core/htseq/count'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -404,7 +404,8 @@ workflow RNASEQ {
     ch_star_multiqc               = Channel.empty()
     ch_aligner_pca_multiqc        = Channel.empty()
     ch_aligner_clustering_multiqc = Channel.empty()
-    if (!params.skip_alignment && params.aligner in ['star_salmon','star_htseq']){
+    def align_star_needed = ['star_htseq','star_salmon']
+    if (!params.skip_alignment && align_star_needed.contains(params.aligner)) {
         ALIGN_STAR (
             ch_strand_inferred_filtered_fastq,
             PREPARE_GENOME.out.star_index.map { [ [:], it ] },
@@ -561,9 +562,10 @@ workflow RNASEQ {
     //
     ch_htseq_count_txt = Channel.empty()
     if (!params.skip_alignment && params.aligner == 'star_htseq'){
+        ch_htseq_bam = ch_genome_bam.join(ch_genome_bam_index)
         HTSEQ_COUNT (
-            ch_genome_bam,
-            params.gtf
+            ch_htseq_bam,
+            PREPARE_GENOME.out.gtf.map { [ [:], it ] }
         )
         chr_htseq_count_txt = HTSEQ_COUNT.out.txt
         ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)

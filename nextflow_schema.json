@@ -350,9 +350,9 @@
                 "aligner": {
                     "type": "string",
                     "default": "star_salmon",
-                    "description": "Specifies the alignment algorithm to use - available options are 'star_salmon', 'star_rsem' and 'hisat2'.",
+                    "description": "Specifies the alignment algorithm to use - available options are 'star_salmon', 'star_rsem', 'star_htseq' and 'hisat2'.",
                     "fa_icon": "fas fa-map-signs",
-                    "enum": ["star_salmon", "star_rsem", "hisat2"]
+                    "enum": ["star_salmon", "star_rsem", "hisat2", "star_htseq"]
                 },
                 "pseudo_aligner": {
                     "type": "string",
