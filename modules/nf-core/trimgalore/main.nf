@@ -72,4 +72,30 @@ process TRIMGALORE {
         END_VERSIONS
         """
     }
+
+    stub: 
+    def prefix = task.ext.prefix ?: "${meta.id}"
+    if(meta.single_end){
+        """
+        touch ${prefix}_val.fq.gz
+
+        cat <<-END_VERSIONS > versions.yml
+        "${task.process}":
+            trimgalore: \$(echo \$(trim_galore --version 2>&1) | sed 's/^.*version //; s/Last.*\$//')
+            cutadapt: \$(cutadapt --version)
+        END_VERSIONS
+        """
+    } else {
+        """
+        touch ${prefix}_1_val_1.fq.gz
+        touch ${prefix}_2_val_2.fq.gz
+
+        cat <<-END_VERSIONS > versions.yml
+        "${task.process}":
+            trimgalore: \$(echo \$(trim_galore --version 2>&1) | sed 's/^.*version //; s/Last.*\$//')
+            cutadapt: \$(cutadapt --version)
+        END_VERSIONS
+        """
+    }
+    
 }
