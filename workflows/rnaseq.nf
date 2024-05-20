@@ -40,15 +40,15 @@ if (!params.skip_alignment) { prepareToolIndices << params.aligner }
 if (!params.skip_pseudo_alignment && params.pseudo_aligner) { prepareToolIndices << params.pseudo_aligner }
 
 // Determine whether to filter the GTF or not
-def filterGtf = 
+def filterGtf =
     ((
         // Condition 1: Alignment is required and aligner is set
         !params.skip_alignment && params.aligner
-    ) || 
+    ) ||
     (
         // Condition 2: Pseudoalignment is required and pseudoaligner is set
         !params.skip_pseudo_alignment && params.pseudo_aligner
-    ) || 
+    ) ||
     (
         // Condition 3: Transcript FASTA file is not provided
         !params.transcript_fasta
@@ -140,6 +140,7 @@ include { SORTMERNA                   } from '../modules/nf-core/sortmerna'
 include { STRINGTIE_STRINGTIE         } from '../modules/nf-core/stringtie/stringtie'
 include { SUBREAD_FEATURECOUNTS       } from '../modules/nf-core/subread/featurecounts'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions'
+include { HTSEQ_COUNT                 } from '../modules/nf-core/htseq/count'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -347,11 +348,11 @@ workflow RNASEQ {
         ch_sortmerna_multiqc = SORTMERNA.out.log
         ch_versions = ch_versions.mix(SORTMERNA.out.versions.first())
     }
-    
+
     //
     // SUBWORKFLOW: Sub-sample FastQ files and pseudoalign with Salmon to auto-infer strandedness
     //
-    
+
     // Branch FastQ channels if 'auto' specified to infer strandedness
     ch_filtered_reads
         .branch {
@@ -393,7 +394,7 @@ workflow RNASEQ {
         .set { ch_strand_inferred_filtered_fastq }
 
     //
-    // SUBWORKFLOW: Alignment with STAR and gene/transcript quantification with Salmon
+    // SUBWORKFLOW: Alignment with STAR
     //
     ch_genome_bam                 = Channel.empty()
     ch_genome_bam_index           = Channel.empty()
@@ -403,7 +404,8 @@ workflow RNASEQ {
     ch_star_multiqc               = Channel.empty()
     ch_aligner_pca_multiqc        = Channel.empty()
     ch_aligner_clustering_multiqc = Channel.empty()
-    if (!params.skip_alignment && params.aligner == 'star_salmon') {
+    def align_star_needed = ['star_htseq','star_salmon']
+    if (!params.skip_alignment && align_star_needed.contains(params.aligner)) {
         ALIGN_STAR (
             ch_strand_inferred_filtered_fastq,
             PREPARE_GENOME.out.star_index.map { [ [:], it ] },
@@ -489,10 +491,12 @@ workflow RNASEQ {
                 .mix(UMITOOLS_PREPAREFORSALMON.out.bam)
                 .set { ch_transcriptome_bam }
         }
+    }
 
-        //
-        // SUBWORKFLOW: Count reads from BAM alignments using Salmon
-        //
+    //
+    // SUBWORKFLOW: Count reads from STAR BAM alignments using Salmon
+    //
+    if (!params.skip_alignment && params.aligner == 'star_salmon') {
         QUANTIFY_STAR_SALMON (
             ch_transcriptome_bam,
             ch_dummy_file,
@@ -522,6 +526,7 @@ workflow RNASEQ {
     // SUBWORKFLOW: Alignment with STAR and gene/transcript quantification with RSEM
     //
     ch_rsem_multiqc = Channel.empty()
+
     if (!params.skip_alignment && params.aligner == 'star_rsem') {
         QUANTIFY_RSEM (
             ch_strand_inferred_filtered_fastq,
@@ -550,6 +555,20 @@ workflow RNASEQ {
             ch_aligner_clustering_multiqc = DESEQ2_QC_RSEM.out.dists_multiqc
             ch_versions = ch_versions.mix(DESEQ2_QC_RSEM.out.versions)
         }
+    }
+
+    //
+    // MODULE: Gene quantification from STAR BAM alignments with HTSEQ
+    //
+    ch_htseq_count_txt = Channel.empty()
+    if (!params.skip_alignment && params.aligner == 'star_htseq'){
+        ch_htseq_bam = ch_genome_bam.join(ch_genome_bam_index)
+        HTSEQ_COUNT (
+            ch_htseq_bam,
+            PREPARE_GENOME.out.gtf.map { [ [:], it ] }
+        )
+        chr_htseq_count_txt = HTSEQ_COUNT.out.txt
+        ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
     }
 
     //
@@ -819,7 +838,7 @@ workflow RNASEQ {
     //
     ch_pseudo_multiqc                   = Channel.empty()
     ch_pseudoaligner_pca_multiqc        = Channel.empty()
-    ch_pseudoaligner_clustering_multiqc = Channel.empty()    
+    ch_pseudoaligner_clustering_multiqc = Channel.empty()
     if (!params.skip_pseudo_alignment && params.pseudo_aligner) {
 
        if (params.pseudo_aligner == 'salmon') {
@@ -854,7 +873,7 @@ workflow RNASEQ {
             ch_versions = ch_versions.mix(DESEQ2_QC_PSEUDO.out.versions)
         }
     }
-    
+
     //
     // MODULE: Pipeline reporting
     //
@@ -925,7 +944,7 @@ workflow.onComplete {
     if (params.email || params.email_on_fail) {
         NfcoreTemplate.email(workflow, params, summary_params, projectDir, log, multiqc_report, pass_mapped_reads, pass_trimmed_reads, pass_strand_check)
     }
-    
+
     NfcoreTemplate.dump_parameters(workflow, params)
     NfcoreTemplate.summary(workflow, params, log, pass_mapped_reads, pass_trimmed_reads, pass_strand_check)
 
