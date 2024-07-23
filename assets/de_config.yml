@@ -1,0 +1,22 @@
+normalization:
+  run: true
+  min_tot_reads: 15
+run_de:
+  run: true
+clustering:
+  run: true
+  pca:
+    run: true
+    label_sampels: true
+  hclust:
+    run: true
+  mds:
+    run: true
+    label_sampels: true
+  min_tot_reads: 15
+heatmap:
+  run: true
+  annotate_samples: true
+
+volcano:
+  run: true
