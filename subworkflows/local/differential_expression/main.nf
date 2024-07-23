@@ -1,3 +1,4 @@
+import org.yaml.snakeyaml.Yaml
 
 include { CLUSTERING           } from '../../../modules/local/rnaseq_analysis_modules/clustering'
 include { COUNTS_NORMALIZATION } from '../../../modules/local/rnaseq_analysis_modules/counts_normalization'
@@ -15,23 +16,25 @@ workflow DIFFERENTIAL_EXPRESSION {
 
     main:
 
+    ch_versions = Channel.empty()
+
     //
     // Load default config
     // If a custom config is present overwrite the default values with custom vals
     //
-    def yaml = new org.yaml.snakeyaml.Yaml();
-    def de_run_conf = yaml.load(default_config);
-    def conf2 = custom_config != null ? yaml.load(custom_config) : [:];
-    de_run_conf.putAll(conf2);
+    def de_run_conf = new Yaml().load(default_config)
+    def conf2 = custom_config != null ? new Yaml().load(custom_config) : [:]
+    de_run_conf.putAll(conf2)
 
     // Run steps that are reqested in config
     ch_scaled_counts = Channel.empty()
 
     if de_run_conf.normalization.run == true {
-        COUNTS_NORMALIZATION {
+        COUNTS_NORMALIZATION (
             counts_file,
             de_run_conf.normalization
-        }
+        )
+        ch_versions = ch_versions.mix(COUNTS_NORMALIZATION.out.versions)
         ch_scaled_counts = COUNTS_NORMALIZATION.out.scaled_counts
     } else {
         ch_scaled_counts = counts_file
@@ -40,21 +43,23 @@ workflow DIFFERENTIAL_EXPRESSION {
     ch_all_results = Channel.empty()
     ch_de_results = Channel.empty()
     if de_run_conf.run_de.run == true {
-        RUN_DE {
+        RUN_DE (
             counts_file,
             sample_groups,
             group_comparisons,
             de_run_conf.run_de
-        }
+        )
         ch_all_results = RUN_DE.out.all_gene_results
         ch_de_results = RUN_DE.out.deseq2_results
+        ch_versions = ch_versions.mix(RUN_DE.out.versions)
     }
 
     if de_run_conf.clustering.run == true {
-        CLUSTERING {
+        CLUSTERING (
             counts_file,
             de_run_conf.clustering
-        }
+        )
+        ch_versions = ch_versions.mix(CLUSTERING.out.versions)
     }
 
     //
@@ -72,20 +77,25 @@ workflow DIFFERENTIAL_EXPRESSION {
     }.set{ ch_de_results_meta }
 
     if de_run_conf.heatmap.run == true {
-        HEATMAP {
+        HEATMAP (
             ch_de_results_meta,
             ch_scaled_counts,
             sample_groups,
             de_run_conf.heatmap
-        }
+        )
+        ch_versions = ch_versions.mix(HEATMAP.out.versions)
     }
 
     if de_run_conf.volcano.run == true {
-        VOLCANO {
+        VOLCANO (
             ch_all_results.first(),
             group_comparisons,
             de_run_conf.volcano
-        }
+        )
+        ch_versions = ch_versions.mix(VOLCANO.out.versions)
     }
+
+    emit:
+    versions = ch_versions
 
 }

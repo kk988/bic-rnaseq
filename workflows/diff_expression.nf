@@ -30,8 +30,8 @@ if (!params.group_comparisons) {
     exit 1, "--group_comparisons (tab delim file) required for differential expression!"
 }
 
-if (!params.counts_file) {
-    exit1, "--counts_file required for differential expression!"
+if (params.diff_expression_only && !params.counts_file) {
+    exit 1, "--counts_file required for differential expression!"
 }
 
 /*
@@ -54,7 +54,7 @@ ch_de_custom_config = params.de_config ? Channel.fromPath(params.de_config) : Ch
 include { DIFFERENTIAL_EXPRESSION as RUN_DE from './subworkflows/local/differential_expression' }
 
 workflow DIFF_EXPRESSION {
-    DIFFERENTIAL_EXPRESSION(
+    RUN_DE(
         ch_de_config,
         ch_de_custom_config.collect().ifEmpty([]),
         params.sample_groups,

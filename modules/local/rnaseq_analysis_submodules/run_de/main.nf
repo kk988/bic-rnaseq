@@ -1,7 +1,7 @@
 process RUN_DE {
     label "process_medium"
 
-    container "docker://kk988/bic_rnaseq_modules:2.0.0"
+    container "docker://kk988/bic_rnaseq_modules:2.0.1"
 
     input:
     path counts_file

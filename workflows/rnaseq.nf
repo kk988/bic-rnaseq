@@ -121,6 +121,7 @@ include { ALIGN_STAR                                        } from '../subworkfl
 include { QUANTIFY_RSEM                                     } from '../subworkflows/local/quantify_rsem'
 include { QUANTIFY_PSEUDO_ALIGNMENT as QUANTIFY_STAR_SALMON } from '../subworkflows/local/quantify_pseudo'
 include { QUANTIFY_PSEUDO_ALIGNMENT                         } from '../subworkflows/local/quantify_pseudo'
+include { DIFFERENTIAL_EXPRESSION as RUN_DE                 } from '../subworkflows/local/differential_expression'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -574,6 +575,14 @@ workflow RNASEQ {
         HTSEQ_MERGE_COUNTS( chr_htseq_count_txt.collect{it[1]} )
         ch_htseq_merged_counts = HTSEQ_MERGE_COUNTS.out.merged_counts
         ch_versions = ch_versions.mix(HTSEQ_MERGE_COUNTS.out.versions)
+
+        RUN_DE (
+            "$projectDir/assets/de_config.yml",
+            params.de_config,
+            params.sample_groups,
+            params.group_comparisons,
+            ch_htseq_merged_counts
+        )
     }
 
     //

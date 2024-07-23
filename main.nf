@@ -62,7 +62,6 @@ WorkflowMain.initialise(workflow, params, log)
 
 include { RNASEQ } from './workflows/rnaseq'
 include { DIFF_EXPRESSION } from './workflows/diff_expression'
-
 //
 // WORKFLOW: Run main nf-core/rnaseq analysis pipeline
 //
