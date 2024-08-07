@@ -141,6 +141,7 @@ include { STRINGTIE_STRINGTIE         } from '../modules/nf-core/stringtie/strin
 include { SUBREAD_FEATURECOUNTS       } from '../modules/nf-core/subread/featurecounts'
 include { CUSTOM_DUMPSOFTWAREVERSIONS } from '../modules/nf-core/custom/dumpsoftwareversions'
 include { HTSEQ_COUNT                 } from '../modules/nf-core/htseq/count'
+include { HTSEQ_MERGE_COUNTS          } from '../modules/local/htseq_merge_counts'
 
 //
 // SUBWORKFLOW: Consisting entirely of nf-core/modules
@@ -294,7 +295,7 @@ workflow RNASEQ {
         ch_trim_read_count     = FASTQ_FASTQC_UMITOOLS_FASTP.out.trim_read_count
         ch_versions = ch_versions.mix(FASTQ_FASTQC_UMITOOLS_FASTP.out.versions)
     }
-
+ 
     //
     // Get list of samples that failed trimming threshold for MultiQC report
     //
@@ -569,6 +570,10 @@ workflow RNASEQ {
         )
         chr_htseq_count_txt = HTSEQ_COUNT.out.txt
         ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
+
+        HTSEQ_MERGE_COUNTS( chr_htseq_count_txt.collect{it[1]} )
+        ch_htseq_merged_counts = HTSEQ_MERGE_COUNTS.out.merged_counts
+        ch_versions = ch_versions.mix(HTSEQ_MERGE_COUNTS.out.versions)
     }
 
     //
