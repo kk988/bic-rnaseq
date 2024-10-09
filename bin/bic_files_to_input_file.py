@@ -28,25 +28,26 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Convert BIC mapping and pairing files to input file for NF pipeline')
     parser.add_argument('-m', '--mapping', type=str, required=True, help='BIC mapping file')
     parser.add_argument('-s', '--strandedness', type=str, choices=['auto', 'forward', 'reverse', 'unstranded'], required=True, help='strandedness of the fastq')
-    #parser.add_argument('-p', '--pairing', type=str, required=True, help='BIC pairing file')
+    parser.add_argument('-k', '--key', type=str, required=False, help='key file - use if some of the samples are not being compared in DE analysis', default=None)
     parser.add_argument('-o', '--output', type=str, required=True, help='Output file')
+    parser.add_argument('--fq_pattern', type=str, required=False, help='pattern to find fq in mapping folder (default: /*_L*_R1_*.fastq.gz)', default='/*_L*_R1_*.fastq.gz')
     return parser.parse_args()
 
-def generate_input_file(mapping, strandedness, output):
-    mapping = generate_mapping_dict(mapping)
-    write_input_file(mapping, strandedness, output)
+def generate_input_file(args):
+    mapping = generate_mapping_dict(args.mapping, args.key)
+    write_input_file(mapping, args.strandedness, args.output, args.fq_pattern)
 
 
-def write_input_file(mapping, strandedness, output):
+def write_input_file(mapping, strandedness, output, fq_pattern):
 
     outfile = open(output, 'w')
     print('sample,fastq_1,fastq_2,strandedness', file=outfile)
     for sample in mapping:
-        print_input_lines(sample, mapping, strandedness, outfile)
+        print_input_lines(sample, mapping, strandedness, outfile, fq_pattern)
 
-def print_input_lines(sample, mapping, strandedness, outfile):
+def print_input_lines(sample, mapping, strandedness, outfile, fq_pattern):
     for fq_path in mapping[sample]:
-        fq_r1s = glob.glob(fq_path + '/*_L*_R1_*.fastq.gz')
+        fq_r1s = glob.glob(fq_path + fq_pattern)
         if not fq_r1s:
             print("No fastq files found for sample: {} in path {}. Will be skipped.".format(sample, fq_path))
             return
@@ -56,7 +57,7 @@ def print_input_lines(sample, mapping, strandedness, outfile):
                 fq_r2 = ""
             print(sample, fq_r1, fq_r2, strandedness, sep=',', file=outfile)
 
-def generate_mapping_dict(mapping):
+def generate_mapping_dict(mapping, key=None):
     mapping_dict = {}
     with open(mapping, 'r') as f:
         for line in f:
@@ -65,8 +66,16 @@ def generate_mapping_dict(mapping):
                 mapping_dict[line[1]] = [line[3]]
             else:
                 mapping_dict[line[1]].append(line[3])
+
+    if key:
+        with open(key, 'r') as k:
+            for line in k:
+                line = line.strip().split('\t')
+                if line[1] == "_EXCLUDE_":
+                    del mapping_dict[line[0]]
+
     return mapping_dict
 
 if __name__ == '__main__':
     args = parse_args()
-    generate_input_file(args.mapping, args.strandedness, args.output)
+    generate_input_file(args)
