@@ -1,9 +1,13 @@
+*.pyc
+.DS_Store
 .nextflow*
 .venv
-work/
+.nf-test.log
 data/
+nf-test
+.nf-test*
 results/
-.DS_Store
-testing/
+test.xml
 testing*
-*.pyc
+testing/
+work/
