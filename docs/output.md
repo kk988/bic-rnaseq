@@ -40,6 +40,7 @@ The pipeline is built using [Nextflow](https://www.nextflow.io/) and processes d
   - [Preseq](#preseq) - Estimation of library complexity
   - [featureCounts](#featurecounts) - Read counting relative to gene biotype
   - [DESeq2](#deseq2) - PCA plot and sample pairwise distance heatmap and dendrogram
+  - [Kraken2/Bracken](#kraken2bracken) - Taxonomic classification of unaligned reads
   - [MultiQC](#multiqc) - Present QC for raw reads, alignment, read counting and sample similiarity
 - [Pseudoalignment and quantification](#pseudoalignment-and-quantification)
   - [Salmon](#pseudoalignment) - Wicked fast gene and isoform quantification relative to the transcriptome
@@ -367,7 +368,7 @@ The majority of RSeQC scripts generate output files which can be plotted and sum
 
 </details>
 
-This script predicts the "strandedness" of the protocol (i.e. unstranded, sense or antisense) that was used to prepare the sample for sequencing by assessing the orientation in which aligned reads overlay gene features in the reference genome. The strandedness of each sample has to be provided to the pipeline in the input samplesheet (see [usage docs](https://nf-co.re/rnaseq/usage#samplesheet-input)). However, this information is not always available, especially for public datasets. As a result, additional features have been incorporated into this pipeline to auto-detect whether you have provided the correct information in the samplesheet, and if this is not the case then a warning table will be placed at the top of the MultiQC report highlighting the offending samples (see image below). If required, this will allow you to correct the input samplesheet and rerun the pipeline with the accurate strand information. Note, it is important to get this information right because it can affect the final results.
+This script predicts the "strandedness" of the protocol (i.e. unstranded, sense or antisense) that was used to prepare the sample for sequencing by assessing the orientation in which aligned reads overlay gene features in the reference genome. The strandedness of each sample has to be provided to the pipeline in the input samplesheet (see [usage docs](https://nf-co.re/rnaseq/usage#samplesheet-input)). However, this information is not always available, especially for public datasets. As a result, additional features have been incorporated into this pipeline to auto-detect whether you have provided the correct information in the samplesheet, and if this is not the case then the affected libraries will be flagged in the table under 'Strandedness Checks' elsewhere in the report. If required, this will allow you to correct the input samplesheet and rerun the pipeline with the accurate strand information. Note, it is important to get this information right because it can affect the final results.
 
 RSeQC documentation: [infer_experiment.py](http://rseqc.sourceforge.net/#infer-experiment-py)
 
@@ -642,6 +643,8 @@ The script included in the pipeline uses DESeq2 to normalise read counts across 
 
 By default, the pipeline uses the `vst` transformation which is more suited to larger experiments. You can set the parameter `--deseq2_vst false` if you wish to use the DESeq2 native `rlog` option. See [DESeq2 docs](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#data-transformations-and-visualization) for a more detailed explanation.
 
+Both types of transformation are performed blind, i.e. using across-all-samples variability, without using any prior information on experimental groups (equivalent to using an intercept-only design), as recommended by the [DESeq2 docs](https://www.bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#blind-dispersion-estimation).
+
 The PCA plots are generated based alternately on the top five hundred most variable genes, or all genes. The former is the conventional approach that is more likely to pick up strong effects (ie the biological signal) and the latter, when different, is picking up a weaker but consistent effect that is synchronised across many transcripts. We project both of these onto the first two PCs (shown in the top row of the figure below), which is the best two dimensional representation of the variation between samples.
 
 We also explore higher components in terms of experimental factors inferred from sample names. If your sample naming convention follows a strict policy of using underscores to delimit values of experimental factors (for example `WT_UNTREATED_REP1`) and all names have the same number of underscores (so excluding `WT_TREATED_10ml_REP1` from being compatible with the previous label), then any of these factors that are informative (ie label some but not all samples the same) then we individually plot upto the first five PCs, per experimental level, for each of the experimental factors.
@@ -653,6 +656,25 @@ The plot on the left hand side shows the standard PC plot - notice the variable 
 ![MultiQC - DESeq2 PCA plot](images/mqc_deseq2_pca.png)
 
 <p align="center"><img src="images/mqc_deseq2_clustering.png" alt="MultiQC - DESeq2 sample similarity plot" width="600"></p>
+
+### Kraken2/Bracken
+
+<details markdown="1">
+<summary>Output files</summary>
+
+- `<ALIGNER>/contaminants/kraken2/kraken_reports`
+  - `*.kraken2.report.txt`: Classification of unaligned reads in the Kraken report format. See the [kraken2 manual](https://github.com/DerrickWood/kraken2/wiki/Manual#output-formats) for more details
+  - `*.classified*.fastq.gz` If `--save_kraken_alignments`, outputs fastq file for each sample with each classified read annotated with taxonomic identification from Kraken2.
+  - `*.unclassified*.fastq.gz` If `save_kraken_unassigned`, outputs fastq file with all reads that were not classified by Kraken2.
+- `<ALIGNER>/contaminants/bracken/`
+  - `*.kraken2.report_bracken.txt`: Kraken-style reports of the Bracken abundance estimate results. See the [kraken2 manual](https://github.com/DerrickWood/kraken2/wiki/Manual#output-formats) for more details.
+  - `*.tsv` Summary of estimated reads for each taxon member at the given classification level and what corrections were made from Kraken2.
+
+</details>
+
+[Kraken2](https://ccb.jhu.edu/software/kraken2/) is a taxonomic classification tool that uses k-mer matches paired with a lowest common ancestory (LCA) algorithm to classify species reads. [Bracken](https://ccb.jhu.edu/software/bracken/) is a statistical method to generate abundance estimates based off of the Kraken2 output. These algorithms are run on unaligned sequences to detect potential contamination of samples. MultiQC reports the top 5 taxon members detected at the level of classification used for Bracken, with toggles available for higher taxonomic levels. If Bracken is skipped, MultiQC will report the top 5 species detected by Kraken2.
+
+![MultiQC - Bracken top species plot](images/bracken-top-n-plot.png)
 
 ### MultiQC
 
@@ -673,7 +695,7 @@ Results generated by MultiQC collate pipeline QC from supported tools i.e. FastQ
 
 ### Pseudoalignment
 
-The principal output files are the same between Salmon and Kallsto:
+The principal output files are the same between Salmon and Kallisto:
 
 <details markdown="1">
 <summary>Output files</summary>
@@ -682,9 +704,10 @@ The principal output files are the same between Salmon and Kallsto:
   - `<pseudo_aligner>.merged.gene_counts.tsv`: Matrix of gene-level raw counts across all samples.
   - `<pseudo_aligner>.gene_tpm.tsv`: Matrix of gene-level TPM values across all samples.
   - `<pseudo_aligner>.gene_counts.rds`: RDS object that can be loaded in R that contains a [SummarizedExperiment](https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) container with the TPM (`abundance`), estimated counts (`counts`) and transcript length (`length`) in the assays slot for genes.
-  - `<pseudo_aligner>.merged.gene_counts_scaled.tsv`: Matrix of gene-level library size-scaled counts across all samples.
+  - `<pseudo_aligner>.merged.gene_lengths.tsv`: Matrix of average within-sample transcript lengths for each gene across all samples.
+  - `<pseudo_aligner>.merged.gene_counts_scaled.tsv`: Matrix of gene-level library size-scaled estimated counts across all samples.
   - `<pseudo_aligner>.merged.gene_counts_scaled.rds`: RDS object that can be loaded in R that contains a [SummarizedExperiment](https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) container with the TPM (`abundance`), estimated library size-scaled counts (`counts`) and transcript length (`length`) in the assays slot for genes.
-  - `<pseudo_aligner>.merged.gene_counts_length_scaled.tsv`: Matrix of gene-level length-scaled counts across all samples.
+  - `<pseudo_aligner>.merged.gene_counts_length_scaled.tsv`: Matrix of gene-level length-scaled estimated counts across all samples.
   - `<pseudo_aligner>.merged.gene_counts_length_scaled.rds`: RDS object that can be loaded in R that contains a [SummarizedExperiment](https://bioconductor.org/packages/release/bioc/html/SummarizedExperiment.html) container with the TPM (`abundance`), estimated length-scaled counts (`counts`) and transcript length (`length`) in the assays slot for genes.
   - `<pseudo_aligner>.merged.transcript_counts.tsv`: Matrix of isoform-level raw counts across all samples.
   - `<pseudo_aligner>.merged.transcript_tpm.tsv`: Matrix of isoform-level TPM values across all samples.
@@ -725,11 +748,11 @@ Transcripts with large inferential uncertainty won't be assigned the exact numbe
 
 The [tximport](https://bioconductor.org/packages/release/bioc/html/tximport.html) package is used in this pipeline to summarise the results generated by Salmon or Kallisto into matrices for use with downstream differential analysis packages. We use tximport with different options to summarize count and TPM quantifications at the gene- and transcript-level. Please see [#499](https://github.com/nf-core/rnaseq/issues/499) for discussion and links regarding which counts are suitable for different types of analysis.
 
-According to the `txtimport` documentation you can do one of the following:
+According to the [`txtimport` documentation](https://bioconductor.org/packages/release/bioc/vignettes/tximport/inst/doc/tximport.html#Downstream_DGE_in_Bioconductor) you can do one of the following:
 
-- Use bias corrected counts with an offset: import all the salmon files with `tximport` and then use `DESeq2` with `dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)` to correct for changes to the average transcript length across samples.
-- Use bias corrected counts without an offset: load and use `salmon.merged.gene_counts_length_scaled.tsv` or `salmon.merged.gene_counts_scaled.tsv` directly as you would with a regular counts matrix.
-- Use bias uncorrected counts: load and use the `txi$counts` matrix (or `salmon.merged.gene_counts.tsv`) with `DESeq2`. This does not correct for potential differential isoform usage. Alternatively, if you have 3’ tagged RNA-seq data this is the most suitable method.
+- Use the original (bias-uncorrected) counts _with an offset_: import all the salmon `quant.sf` files with `tximport` and then use `DESeq2` with `dds <- DESeqDataSetFromTximport(txi, sampleTable, ~condition)` to automatically construct an object with gene-level offsets in-built, which can be used by DESeq2 to automatically account for effective gene length effects across conditions. It's also possible to combine the `.merged.gene_counts.tsv` and `.gene_lengths.tsv` matrices output by this workflow to make your own object the same way - which is what [the nf-core differentialabundance workflow does](https://nf-co.re/differentialabundance/1.5.0/docs/usage#outputs-from-nf-corernaseq-and-other-tximport-processed-results). See the [DESeq2 module](https://github.com/nf-core/modules/blob/c8f7f481bf2ccd8f9c7f2d499d94e74d4b9e23ab/modules/nf-core/deseq2/differential/templates/deseq_de.R#L323) for the implementation details.
+- Use bias-corrected counts _without an offset_: load and use `salmon.merged.gene_counts_length_scaled.tsv` or `salmon.merged.gene_counts_scaled.tsv` directly as you would with a regular gene-level counts matrix. These files were created using the `tximport` argument `countsFromAbundance="scaledTPM"` or `"lengthScaledTPM"` to scale counts to library size or to library size and average transcript length respectively.
+- Use the original (bias-uncorrected) counts _without an offset_: load and use the `txi$counts` matrix (or `salmon.merged.gene_counts.tsv`) with `DESeq2`. This is generally **not** recommended, since it does not correct for potential differential isoform usage (the offset). However, if you have 3’ tagged RNA-seq data, then this _is_ the most suitable method, because the counts do not exhibit any length bias.
 
 > **NB:** The default Salmon parameters and a k-mer size of 31 are used to create the index. As [documented here](https://salmon.readthedocs.io/en/latest/salmon.html#preparing-transcriptome-indices-mapping-based-mode) and [discussed here](https://github.com/COMBINE-lab/salmon/issues/482#issuecomment-583799668), a k-mer size off 31 works well with reads that are 75bp or longer.
 
