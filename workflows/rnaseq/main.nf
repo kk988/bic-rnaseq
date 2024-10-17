@@ -323,7 +323,7 @@ workflow RNASEQ {
         ch_htseq_bam = ch_genome_bam.join(ch_genome_bam_index)
         HTSEQ_COUNT (
             ch_htseq_bam,
-            PREPARE_GENOME.out.gtf.map { [ [:], it ] }
+            ch_gtf.map { [ [:], it ] }
         )
         chr_htseq_count_txt = HTSEQ_COUNT.out.txt
         ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
