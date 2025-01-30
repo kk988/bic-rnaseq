@@ -1,0 +1,37 @@
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##     nf-core/rnaseq
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+##     This is an example parameter file to pass to the `-params-file` option
+##     of nextflow run with the nf-core/rnaseq pipeline.
+##      
+##     Uncomment lines with a single '#' if you want to pass the parameter to
+##     the pipeline.
+## -----------------------------------------------------------------------------
+
+aligner: 'star_htseq'
+igenomes_ignore: true
+
+
+bam_csi_index: false
+publish_dir_mode: 'copy'
+rseqc_modules: 'bam_stat,inner_distance,infer_experiment,junction_annotation,junction_saturation,read_distribution,read_duplication'
+save_align_intermeds: false
+save_unaligned: false
+with_umi: false
+
+# skips
+skip_alignment: false
+skip_bigwig: false
+skip_biotype_qc: true
+skip_dupradar: false
+skip_fastqc: false
+skip_markduplicates: false
+skip_multiqc: false
+skip_qualimap: false
+skip_qc: false
+skip_rseqc: false
+skip_stringtie: false
+skip_trimming: true
+
+
+
