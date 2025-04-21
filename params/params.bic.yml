@@ -3,7 +3,7 @@
 ## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ##     This is an example parameter file to pass to the `-params-file` option
 ##     of nextflow run with the nf-core/rnaseq pipeline.
-##      
+##
 ##     Uncomment lines with a single '#' if you want to pass the parameter to
 ##     the pipeline.
 ## -----------------------------------------------------------------------------
