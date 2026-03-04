@@ -7,7 +7,7 @@ process HTSEQ_MERGE_COUNTS {
         'nf-core/ubuntu:20.04' }"
 
     input:
-    val(count_files)
+    path(count_files)
 
     output:
     path "htseq.merged.counts.tsv", emit: merged_counts
