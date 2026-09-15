@@ -259,7 +259,7 @@ workflow PREPARE_GENOME {
     //
     ch_star_index = Channel.empty()
     if ('star_salmon' in prepare_tool_indices || 'star_htseq' in prepare_tool_indices) {
-        if (star_index) {
+        if (star_index && !additional_fasta) {
             if (star_index.endsWith('.tar.gz')) {
                 ch_star_index = UNTAR_STAR_INDEX ( [ [:], star_index ] ).untar.map { it[1] }
                 ch_versions   = ch_versions.mix(UNTAR_STAR_INDEX.out.versions)
