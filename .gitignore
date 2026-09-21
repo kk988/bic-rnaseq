@@ -13,3 +13,4 @@ testing*
 testing/
 work/
 null/
+.lineage/
