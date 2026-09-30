@@ -10,7 +10,6 @@
 include { DESEQ2_QC as DESEQ2_QC_BAM_SALMON } from '../../modules/local/deseq2_qc'
 include { DESEQ2_QC as DESEQ2_QC_RSEM        } from '../../modules/local/deseq2_qc'
 include { DESEQ2_QC as DESEQ2_QC_PSEUDO      } from '../../modules/local/deseq2_qc'
-include { MULTIQC_CUSTOM_BIOTYPE             } from '../../modules/local/multiqc_custom_biotype'
 include { HTSEQ_MERGE_COUNTS                 } from '../../modules/local/htseq_merge_counts'
 include { RUSTQC                              } from '../../modules/nf-core/rustqc/main'
 
@@ -321,11 +320,9 @@ workflow RNASEQ {
             ch_gtf.map { [ [:], it ] }
         )
         chr_htseq_count_txt = HTSEQ_COUNT.out.txt
-        ch_versions = ch_versions.mix(HTSEQ_COUNT.out.versions)
 
         HTSEQ_MERGE_COUNTS( chr_htseq_count_txt.collect{it[1]} )
         ch_htseq_merged_counts = HTSEQ_MERGE_COUNTS.out.merged_counts
-        ch_versions = ch_versions.mix(HTSEQ_MERGE_COUNTS.out.versions)
     }
 
     // SUBWORKFLOW: Alignment with Bowtie2
